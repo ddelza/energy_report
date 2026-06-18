@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>발표회 청중 보고서 조회</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    background: #f0f4f8;
+    color: #333;
+    min-height: 100vh;
+  }
+  header {
+    background: #1a73e8;
+    color: white;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  header h1 { font-size: 1.3rem; font-weight: 600; }
+  header p { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+
+  /* 설정 배너 */
+  #setupBanner {
+    background: #fff3e0;
+    border: 2px solid #ffb74d;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  #setupBanner p { font-size: 0.9rem; color: #e65100; margin-bottom: 8px; }
+  #setupBanner input {
+    width: 100%; padding: 8px 12px; border: 1.5px solid #ffb74d;
+    border-radius: 8px; font-size: 0.9rem; margin-bottom: 8px;
+  }
+  #setupBanner button {
+    padding: 7px 18px; background: #e65100; color: white;
+    border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+  }
+
+  .filter-card {
+    background: white; border-radius: 12px; padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 20px;
+  }
+  .filter-card h2 { font-size: 1rem; color: #1a73e8; margin-bottom: 14px; }
+  .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-group label { font-size: 0.8rem; color: #666; font-weight: 500; }
+  .filter-group select, .filter-group input {
+    padding: 8px 12px; border: 1.5px solid #ddd; border-radius: 8px;
+    font-size: 0.95rem; outline: none; background: white; min-width: 100px;
+    transition: border-color 0.2s;
+  }
+  .filter-group select:focus, .filter-group input:focus { border-color: #1a73e8; }
+  #nameInput { min-width: 140px; }
+  .btn {
+    padding: 9px 22px; border: none; border-radius: 8px;
+    font-size: 0.95rem; cursor: pointer; font-weight: 600;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-secondary { background: #f1f3f4; color: #555; }
+  .btn-secondary:hover { background: #e2e5e9; }
+
+  .student-list { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 20px; overflow: hidden; }
+  .student-list-header { padding: 14px 20px; background: #f8f9fa; border-bottom: 1px solid #eee; font-size: 0.9rem; color: #555; }
+  .student-item {
+    display: flex; align-items: center; padding: 12px 20px;
+    border-bottom: 1px solid #f0f0f0; cursor: pointer;
+    transition: background 0.15s; gap: 12px;
+  }
+  .student-item:last-child { border-bottom: none; }
+  .student-item:hover { background: #f0f7ff; }
+  .student-item.selected { background: #e8f0fe; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
+  .badge-반 { background: #e8f5e9; color: #2e7d32; }
+  .badge-모둠 { background: #fff3e0; color: #e65100; }
+  .student-name { font-weight: 600; font-size: 1rem; flex: 1; }
+
+  .submissions-section { margin-bottom: 8px; }
+  .submissions-section h2 { font-size: 1rem; color: #333; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #1a73e8; }
+  .submission-card {
+    background: white; border-radius: 12px; padding: 18px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 12px;
+    border-left: 4px solid #1a73e8;
+  }
+  .submission-card .timestamp { font-size: 0.78rem; color: #aaa; margin-bottom: 12px; }
+  .submission-card .topic {
+    font-size: 0.9rem; font-weight: 700; color: #1a73e8;
+    margin-bottom: 12px; padding: 6px 10px; background: #e8f0fe; border-radius: 6px;
+  }
+  .field-label { font-size: 0.78rem; font-weight: 700; color: #888; margin-bottom: 4px; margin-top: 10px; }
+  .field-value {
+    font-size: 0.93rem; line-height: 1.6; color: #333; white-space: pre-wrap;
+    background: #fafafa; padding: 8px 12px; border-radius: 6px; border: 1px solid #eee;
+  }
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 0.95rem; }
+  .loading { text-align: center; padding: 30px; color: #888; }
+  .spinner {
+    display: inline-block; width: 28px; height: 28px;
+    border: 3px solid #eee; border-top-color: #1a73e8;
+    border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #resultSection { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>에너지 전환과 보존 발표회 청중 보고서 조회</h1>
+  <p>학생을 선택하면 제출한 보고서를 모두 볼 수 있습니다.</p>
+</header>
+
+<div class="container">
+  <!-- Apps Script URL 설정 배너 (URL 없을 때만 표시) -->
+  <div id="setupBanner">
+    <p>⚠️ Apps Script 배포 URL을 입력해주세요.</p>
+    <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    <button onclick="saveScriptUrl()">저장</button>
+  </div>
+
+  <!-- 필터 -->
+  <div class="filter-card">
+    <h2>학생 검색</h2>
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>반</label>
+        <select id="filterClass"><option value="">전체</option></select>
+      </div>
+      <div class="filter-group">
+        <label>모둠</label>
+        <select id="filterGroup"><option value="">전체</option></select>
+      </div>
+      <div class="filter-group">
+        <label>이름 검색</label>
+        <input type="text" id="nameInput" placeholder="이름 입력...">
+      </div>
+      <button class="btn btn-secondary" onclick="resetFilter()">초기화</button>
+    </div>
+  </div>
+
+  <div id="studentSection">
+    <div class="loading"><div class="spinner"></div><br>학생 정보 불러오는 중...</div>
+  </div>
+
+  <div id="resultSection">
+    <div id="resultContent"></div>
+  </div>
+</div>
+
+<script>
+  // Apps Script 배포 URL — 직접 넣거나, 사이트 처음 로드 시 입력창을 통해 저장됩니다.
+  const SCRIPT_URL_KEY = 'energy_report_script_url';
+  let SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || '';
+
+  let allStudents = [];
+  let selectedStudent = null;
+
+  function saveScriptUrl() {
+    const val = document.getElementById('scriptUrlInput').value.trim();
+    if (!val) return alert('URL을 입력해주세요.');
+    localStorage.setItem(SCRIPT_URL_KEY, val);
+    SCRIPT_URL = val;
+    document.getElementById('setupBanner').style.display = 'none';
+    loadStudents();
+  }
+
+  function init() {
+    if (!SCRIPT_URL) {
+      document.getElementById('setupBanner').style.display = 'block';
+      document.getElementById('studentSection').innerHTML =
+        '<div class="empty-state">위 배너에 Apps Script URL을 입력하면 시작됩니다.</div>';
+    } else {
+      loadStudents();
+    }
+  }
+
+  function loadStudents() {
+    document.getElementById('studentSection').innerHTML =
+      '<div class="loading"><div class="spinner"></div><br>학생 정보 불러오는 중...</div>';
+
+    fetch(SCRIPT_URL + '?action=getStudents')
+      .then(r => r.json())
+      .then(students => {
+        allStudents = students;
+        buildFilters(students);
+        renderStudents(students);
+      })
+      .catch(err => {
+        document.getElementById('studentSection').innerHTML =
+          '<div class="empty-state">데이터를 불러오지 못했습니다.<br><small>' + err + '</small><br><br>' +
+          '<button onclick="document.getElementById(\'setupBanner\').style.display=\'block\'" style="padding:6px 14px;border:none;background:#1a73e8;color:white;border-radius:6px;cursor:pointer;">URL 재설정</button></div>';
+      });
+  }
+
+  function buildFilters(students) {
+    const classes = [...new Set(students.map(s => s.반))].sort((a,b) => Number(a)-Number(b));
+    const groups = [...new Set(students.map(s => s.모둠).filter(Boolean))].sort((a,b) => Number(a)-Number(b));
+
+    const classSelect = document.getElementById('filterClass');
+    classSelect.innerHTML = '<option value="">전체</option>';
+    classes.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c + '반';
+      classSelect.appendChild(opt);
+    });
+
+    const groupSelect = document.getElementById('filterGroup');
+    groupSelect.innerHTML = '<option value="">전체</option>';
+    groups.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g; opt.textContent = g + '모둠';
+      groupSelect.appendChild(opt);
+    });
+
+    classSelect.addEventListener('change', applyFilter);
+    groupSelect.addEventListener('change', applyFilter);
+    document.getElementById('nameInput').addEventListener('input', applyFilter);
+  }
+
+  function applyFilter() {
+    const 반 = document.getElementById('filterClass').value;
+    const 모둠 = document.getElementById('filterGroup').value;
+    const name = document.getElementById('nameInput').value.trim();
+    const filtered = allStudents.filter(s =>
+      (!반 || s.반 === 반) &&
+      (!모둠 || s.모둠 === 모둠) &&
+      (!name || s.성명.includes(name))
+    );
+    renderStudents(filtered);
+    if (selectedStudent && !filtered.find(s => s.학번 === selectedStudent.학번)) {
+      document.getElementById('resultSection').style.display = 'none';
+      selectedStudent = null;
+    }
+  }
+
+  function resetFilter() {
+    document.getElementById('filterClass').value = '';
+    document.getElementById('filterGroup').value = '';
+    document.getElementById('nameInput').value = '';
+    applyFilter();
+  }
+
+  function renderStudents(students) {
+    const sec = document.getElementById('studentSection');
+    if (students.length === 0) {
+      sec.innerHTML = '<div class="empty-state">검색 결과가 없습니다.</div>';
+      return;
+    }
+    let html = '<div class="student-list">';
+    html += '<div class="student-list-header">학생 ' + students.length + '명</div>';
+    students.forEach(s => {
+      const isSelected = selectedStudent && selectedStudent.학번 === s.학번;
+      html += `<div class="student-item${isSelected ? ' selected' : ''}"
+        onclick="selectStudent(${JSON.stringify(s)}, this)">
+        <span class="student-name">${s.성명}</span>
+        <span class="badge badge-반">${s.반}반 ${s.번호}번</span>
+        <span class="badge badge-모둠">${s.모둠}모둠</span>
+      </div>`;
+    });
+    html += '</div>';
+    sec.innerHTML = html;
+  }
+
+  function selectStudent(s, el) {
+    selectedStudent = s;
+    document.querySelectorAll('.student-item').forEach(i => i.classList.remove('selected'));
+    el.classList.add('selected');
+
+    const resultSec = document.getElementById('resultSection');
+    resultSec.style.display = 'block';
+    document.getElementById('resultContent').innerHTML =
+      '<div class="loading"><div class="spinner"></div><br>보고서 불러오는 중...</div>';
+    resultSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    fetch(`${SCRIPT_URL}?action=getSubmissions&반=${encodeURIComponent(s.반)}&번호=${encodeURIComponent(s.번호)}`)
+      .then(r => r.json())
+      .then(submissions => renderSubmissions(s, submissions))
+      .catch(err => {
+        document.getElementById('resultContent').innerHTML =
+          '<div class="empty-state">데이터를 불러오지 못했습니다.<br><small>' + err + '</small></div>';
+      });
+  }
+
+  function renderSubmissions(s, submissions) {
+    let html = `<div class="submissions-section">
+      <h2>📋 ${s.성명} (${s.반}반 · ${s.모둠}모둠) — 제출 ${submissions.length}건</h2>`;
+    if (submissions.length === 0) {
+      html += '<div class="empty-state">제출한 보고서가 없습니다.</div>';
+    } else {
+      submissions.forEach((sub, i) => {
+        html += `<div class="submission-card">
+          <div class="timestamp">제출 ${i+1}번 · ${esc(sub.타임스탬프)}</div>
+          <div class="topic">📌 발표 주제: ${esc(sub.주제)}</div>
+          <div class="field-label">발표 내용 메모</div>
+          <div class="field-value">${esc(sub.메모) || '(미작성)'}</div>
+          <div class="field-label">과학적 사고를 통해 비판적 질문하기</div>
+          <div class="field-value">${esc(sub.질문) || '(미작성)'}</div>
+        </div>`;
+      });
+    }
+    html += '</div>';
+    document.getElementById('resultContent').innerHTML = html;
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  init();
+</script>
+</body>
+</html>
