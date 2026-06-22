@@ -109,9 +109,45 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   #resultSection { display: none; }
+
+  /* 비밀번호 게이트 */
+  #authGate {
+    position: fixed; inset: 0; background: #f0f4f8;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999; padding: 20px;
+  }
+  #authGate .gate-card {
+    background: white; border-radius: 14px; padding: 32px 28px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12); max-width: 360px; width: 100%;
+    text-align: center;
+  }
+  #authGate h2 { font-size: 1.1rem; color: #1a73e8; margin-bottom: 16px; }
+  #authGate input {
+    width: 100%; padding: 11px 14px; border: 1.5px solid #ddd; border-radius: 8px;
+    font-size: 1rem; outline: none; margin-bottom: 12px; text-align: center;
+  }
+  #authGate input:focus { border-color: #1a73e8; }
+  #authGate button {
+    width: 100%; padding: 11px; border: none; border-radius: 8px;
+    background: #1a73e8; color: white; font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+  #authGate button:hover { background: #1557b0; }
+  #authGate .gate-error { color: #d32f2f; font-size: 0.85rem; margin-top: 10px; display: none; }
+  #appRoot { display: none; }
 </style>
 </head>
 <body>
+
+<div id="authGate">
+  <div class="gate-card">
+    <h2>🔒 교사용 페이지</h2>
+    <input type="password" id="gatePw" placeholder="비밀번호 입력">
+    <button onclick="checkGatePw()">입장</button>
+    <div class="gate-error" id="gateError">비밀번호가 올바르지 않습니다.</div>
+  </div>
+</div>
+
+<div id="appRoot">
 <header>
   <h1>에너지 전환과 보존 발표회 청중 보고서 조회</h1>
   <p>학생을 선택하면 제출한 보고서를 모두 볼 수 있습니다. · <a href="youtube.html" style="color:white;text-decoration:underline;">유튜브 모아보기</a></p>
@@ -152,6 +188,7 @@
   <div id="resultSection">
     <div id="resultContent"></div>
   </div>
+</div>
 </div>
 
 <script>
@@ -367,7 +404,33 @@
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  init();
+  // 비밀번호 게이트
+  const GATE_PW = 'byung0703!';
+  const GATE_KEY = 'energy_report_teacher_auth';
+
+  function unlockApp() {
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'block';
+    init();
+  }
+
+  function checkGatePw() {
+    const val = document.getElementById('gatePw').value;
+    if (val === GATE_PW) {
+      sessionStorage.setItem(GATE_KEY, '1');
+      unlockApp();
+    } else {
+      document.getElementById('gateError').style.display = 'block';
+    }
+  }
+
+  document.getElementById('gatePw').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') checkGatePw();
+  });
+
+  if (sessionStorage.getItem(GATE_KEY) === '1') {
+    unlockApp();
+  }
 </script>
 </body>
 </html>
