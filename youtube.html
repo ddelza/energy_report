@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>발표 유튜브 링크 모아보기</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    background: #f0f4f8;
+    color: #333;
+    min-height: 100vh;
+  }
+  header {
+    background: #1a73e8;
+    color: white;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  header h1 { font-size: 1.3rem; font-weight: 600; }
+  header p { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+
+  .class-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+  .class-btn {
+    flex: 1; min-width: 70px; padding: 14px 0; border: none; border-radius: 10px;
+    background: white; color: #1a73e8; font-size: 1.05rem; font-weight: 700;
+    cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+  }
+  .class-btn:active { transform: scale(0.97); }
+  .class-btn.selected { background: #1a73e8; color: white; }
+
+  .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .video-card {
+    background: white; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+  }
+  .video-card iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; background: #000; }
+  .video-card .no-video {
+    width: 100%; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center;
+    background: #eee; color: #999; font-size: 0.85rem;
+  }
+  .video-card .info { padding: 12px 14px; }
+  .video-card .topic { font-size: 0.92rem; font-weight: 700; color: #1a73e8; margin-bottom: 6px; }
+  .video-card .members { font-size: 0.82rem; color: #777; }
+
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 0.95rem; }
+  .loading { text-align: center; padding: 30px; color: #888; }
+  .spinner {
+    display: inline-block; width: 28px; height: 28px;
+    border: 3px solid #eee; border-top-color: #1a73e8;
+    border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>발표 유튜브 링크 모아보기</h1>
+  <p>반을 선택하면 모둠별 발표 영상을 한눈에 볼 수 있습니다.</p>
+</header>
+
+<div class="container">
+  <div class="class-buttons" id="classButtons">
+    <button class="class-btn" data-class="1" onclick="selectClass('1', this)">1반</button>
+    <button class="class-btn" data-class="2" onclick="selectClass('2', this)">2반</button>
+    <button class="class-btn" data-class="3" onclick="selectClass('3', this)">3반</button>
+    <button class="class-btn" data-class="4" onclick="selectClass('4', this)">4반</button>
+    <button class="class-btn" data-class="5" onclick="selectClass('5', this)">5반</button>
+  </div>
+
+  <div id="resultSection">
+    <div class="empty-state">위에서 반을 선택해주세요.</div>
+  </div>
+</div>
+
+<script>
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwA3tYU82Kxt0l5QH-zYBBX36TZ0mrYJwPWVVt3fIrVUWitUGEmHINk5vaTo0mcgTpa/exec';
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cbName = '_cb' + Date.now() + Math.floor(Math.random() * 1e6);
+      const script = document.createElement('script');
+      script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+      window[cbName] = function(data) {
+        delete window[cbName];
+        document.head.removeChild(script);
+        resolve(data);
+      };
+      script.onerror = function() {
+        delete window[cbName];
+        document.head.removeChild(script);
+        reject(new Error('JSONP 요청 실패'));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  function selectClass(반, el) {
+    document.querySelectorAll('.class-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+
+    const sec = document.getElementById('resultSection');
+    sec.innerHTML = '<div class="loading"><div class="spinner"></div><br>불러오는 중...</div>';
+
+    jsonp(`${SCRIPT_URL}?action=getYoutubeByClass&반=${encodeURIComponent(반)}`)
+      .then(list => renderVideos(반, list))
+      .catch(err => {
+        sec.innerHTML = '<div class="empty-state">데이터를 불러오지 못했습니다.<br><small>' + err + '</small></div>';
+      });
+  }
+
+  function renderVideos(반, list) {
+    const sec = document.getElementById('resultSection');
+    if (!list || list.length === 0) {
+      sec.innerHTML = '<div class="empty-state">' + 반 + '반 자료가 없습니다.</div>';
+      return;
+    }
+    let html = '<div class="video-grid">';
+    list.forEach(item => {
+      const videoId = extractYoutubeId(item.유튜브링크);
+      const members = item.모둠원.join(', ');
+      html += '<div class="video-card">';
+      if (videoId) {
+        html += `<iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>`;
+      } else {
+        html += '<div class="no-video">영상 없음</div>';
+      }
+      html += `<div class="info">
+        <div class="topic">${esc(item.주제)}</div>
+        <div class="members">${esc(members)}</div>
+      </div>`;
+      html += '</div>';
+    });
+    html += '</div>';
+    sec.innerHTML = html;
+  }
+
+  function extractYoutubeId(url) {
+    if (!url) return null;
+    const m = String(url).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
