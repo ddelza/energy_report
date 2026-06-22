@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내 발표 현황 조회</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    background: #f0f4f8;
+    color: #333;
+    min-height: 100vh;
+  }
+  header {
+    background: #1a73e8;
+    color: white;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  header h1 { font-size: 1.3rem; font-weight: 600; }
+  header p { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+
+  .container { max-width: 700px; margin: 0 auto; padding: 24px 16px; }
+
+  /* 로그인 카드 */
+  .login-card {
+    background: white; border-radius: 12px; padding: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .login-card h2 { font-size: 1.05rem; color: #1a73e8; margin-bottom: 16px; }
+  .login-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .login-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 90px; }
+  .login-group label { font-size: 0.8rem; color: #666; font-weight: 500; }
+  .login-group input {
+    padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px;
+    font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+  }
+  .login-group input:focus { border-color: #1a73e8; }
+  .login-btn {
+    width: 100%; padding: 12px; border: none; border-radius: 8px;
+    background: #1a73e8; color: white; font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: background 0.2s; margin-top: 6px;
+  }
+  .login-btn:hover { background: #1557b0; }
+  .login-btn:disabled { background: #aac4f0; cursor: not-allowed; }
+  .error-msg {
+    color: #d32f2f; background: #fdecea; border: 1px solid #f5c6cb;
+    border-radius: 8px; padding: 10px 14px; font-size: 0.9rem; margin-top: 12px; display: none;
+  }
+
+  /* 결과 영역 */
+  #resultSection { display: none; }
+  .logout-row { text-align: right; margin-bottom: 12px; }
+  .logout-btn {
+    background: none; border: none; color: #888; font-size: 0.85rem;
+    cursor: pointer; text-decoration: underline;
+  }
+
+  .score-card {
+    background: linear-gradient(135deg, #1a73e8, #5a9bf0);
+    color: white; border-radius: 14px; padding: 24px;
+    text-align: center; margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(26,115,232,0.3);
+  }
+  .score-card .total-label { font-size: 0.9rem; opacity: 0.9; margin-bottom: 6px; }
+  .score-card .total-value { font-size: 2.4rem; font-weight: 800; }
+  .score-card .total-value small { font-size: 1.2rem; font-weight: 500; opacity: 0.85; }
+  .score-card .student-name { margin-top: 8px; font-size: 0.95rem; opacity: 0.95; }
+
+  .section { margin-bottom: 20px; }
+  .section h2 {
+    font-size: 1rem; color: #333; margin-bottom: 12px;
+    padding-bottom: 8px; border-bottom: 2px solid #1a73e8;
+  }
+
+  .score-table { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }
+  .score-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px; border-bottom: 1px solid #f0f0f0; gap: 12px;
+  }
+  .score-row:last-child { border-bottom: none; }
+  .score-row .label { font-size: 0.9rem; color: #444; }
+  .score-row .value { font-size: 0.95rem; font-weight: 700; color: #1a73e8; white-space: nowrap; }
+  .score-row .value.pending { color: #bbb; font-weight: 500; }
+
+  .card {
+    background: white; border-radius: 12px; padding: 18px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 12px;
+    border-left: 4px solid #1a73e8;
+  }
+  .card .meta { font-size: 0.78rem; color: #aaa; margin-bottom: 10px; }
+  .card .topic {
+    font-size: 0.9rem; font-weight: 700; color: #1a73e8;
+    margin-bottom: 12px; padding: 6px 10px; background: #e8f0fe; border-radius: 6px;
+  }
+  .field-label { font-size: 0.78rem; font-weight: 700; color: #888; margin-bottom: 4px; margin-top: 10px; }
+  .field-value {
+    font-size: 0.93rem; line-height: 1.6; color: #333; white-space: pre-wrap;
+    background: #fafafa; padding: 8px 12px; border-radius: 6px; border: 1px solid #eee;
+  }
+  .empty-state { text-align: center; padding: 30px; color: #aaa; font-size: 0.9rem; background: white; border-radius: 12px; }
+
+  .loading { text-align: center; padding: 30px; color: #888; }
+  .spinner {
+    display: inline-block; width: 28px; height: 28px;
+    border: 3px solid #eee; border-top-color: #1a73e8;
+    border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>내 발표 현황 조회</h1>
+  <p>반 · 번호 · 이름 · 비밀번호를 입력하면 내가 작성한 내용과 점수를 볼 수 있습니다.</p>
+</header>
+
+<div class="container">
+  <div id="loginSection">
+    <div class="login-card">
+      <h2>로그인</h2>
+      <div class="login-row">
+        <div class="login-group">
+          <label>반</label>
+          <input type="number" id="loginBan" placeholder="예: 1">
+        </div>
+        <div class="login-group">
+          <label>번호</label>
+          <input type="number" id="loginNum" placeholder="예: 5">
+        </div>
+        <div class="login-group" style="flex: 1.4; min-width: 120px;">
+          <label>이름</label>
+          <input type="text" id="loginName" placeholder="홍길동">
+        </div>
+      </div>
+      <div class="login-group" style="margin-bottom: 12px;">
+        <label>개인 비밀번호</label>
+        <input type="password" id="loginPw" placeholder="비밀번호 입력">
+      </div>
+      <button class="login-btn" id="loginBtn" onclick="login()">조회하기</button>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+  </div>
+
+  <div id="resultSection">
+    <div class="logout-row">
+      <button class="logout-btn" onclick="logout()">← 다시 로그인</button>
+    </div>
+    <div id="resultContent"></div>
+  </div>
+</div>
+
+<script>
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7T4yg2Uz_xXkCqwDAOdtKFZ_kAl81SxPM-EmE6uAMmdgdsKIO4RL4Oa5Whc1p4wZ9gg/exec';
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cbName = '_cb' + Date.now() + Math.floor(Math.random() * 1e6);
+      const script = document.createElement('script');
+      script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+      window[cbName] = function(data) {
+        delete window[cbName];
+        document.head.removeChild(script);
+        resolve(data);
+      };
+      script.onerror = function() {
+        delete window[cbName];
+        document.head.removeChild(script);
+        reject(new Error('서버에 연결할 수 없습니다.'));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function login() {
+    const ban = document.getElementById('loginBan').value.trim();
+    const num = document.getElementById('loginNum').value.trim();
+    const name = document.getElementById('loginName').value.trim();
+    const pw = document.getElementById('loginPw').value.trim();
+
+    document.getElementById('errorMsg').style.display = 'none';
+
+    if (!ban || !num || !name || !pw) {
+      showError('반, 번호, 이름, 비밀번호를 모두 입력해주세요.');
+      return;
+    }
+
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.textContent = '조회 중...';
+
+    const url = `${SCRIPT_URL}?action=getMyData&반=${encodeURIComponent(ban)}&번호=${encodeURIComponent(num)}&성명=${encodeURIComponent(name)}&비밀번호=${encodeURIComponent(pw)}`;
+
+    jsonp(url)
+      .then(data => {
+        btn.disabled = false;
+        btn.textContent = '조회하기';
+        if (data.error) {
+          showError(data.error);
+          return;
+        }
+        renderResult(data);
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('resultSection').style.display = 'block';
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.textContent = '조회하기';
+        showError('오류가 발생했습니다: ' + err.message);
+      });
+  }
+
+  function logout() {
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('loginPw').value = '';
+  }
+
+  function scoreText(item) {
+    return item.점수 === null
+      ? '<span class="value pending">(채점중)</span>'
+      : `<span class="value">${item.점수} / ${item.만점}점</span>`;
+  }
+
+  function renderResult(data) {
+    const s = data.학생;
+    const scores = data.점수;
+    const prep = data.발표준비;
+    const submissions = data.청중보고서 || [];
+
+    let html = '';
+
+    // 총점 카드
+    const totalText = scores.총점.점수 === null
+      ? '채점중'
+      : `${scores.총점.점수}<small> / ${scores.총점.만점}점</small>`;
+    html += `<div class="score-card">
+      <div class="total-label">최종 점수</div>
+      <div class="total-value">${totalText}</div>
+      <div class="student-name">${esc(s.반)}반 ${esc(s.번호)}번 ${esc(s.성명)} (${esc(s.모둠)}모둠)</div>
+    </div>`;
+
+    // 점수 상세
+    html += `<div class="section">
+      <h2>📊 항목별 점수</h2>
+      <div class="score-table">
+        <div class="score-row"><span class="label">발표 대본 (핵심 개념 작성하기)</span>${scoreText(scores.대본)}</div>
+        <div class="score-row"><span class="label">예상 질문 작성하기</span>${scoreText(scores.예상질문)}</div>
+        <div class="score-row"><span class="label">발표 자료 준비·제작하기</span>${scoreText(scores.자료)}</div>
+        <div class="score-row"><span class="label">청중보고서 - 발표내용 메모하기</span>${scoreText(scores.메모)}</div>
+        <div class="score-row"><span class="label">청중보고서 - 질문 점수 (질문 만들기+보너스)</span>${scoreText(scores.질문점수합)}</div>
+      </div>
+    </div>`;
+
+    // 발표 준비 현황
+    html += `<div class="section"><h2>📝 내가 작성한 발표 준비 자료</h2>`;
+    if (!prep) {
+      html += '<div class="empty-state">제출한 발표 준비 자료가 없습니다.</div>';
+    } else {
+      const link = prep.캔바링크
+        ? `<a href="${esc(prep.캔바링크)}" target="_blank" rel="noopener">${esc(prep.캔바링크)}</a>`
+        : '(미작성)';
+      html += `<div class="card">
+        <div class="meta">모둠원: ${esc(prep.모둠원.join(', '))}</div>
+        <div class="topic">📌 발표 주제: ${esc(prep.주제)}</div>
+        <div class="field-label">발표 대본</div>
+        <div class="field-value">${esc(prep.대본) || '(미작성)'}</div>
+        <div class="field-label">발표 자료 (캔바 링크)</div>
+        <div class="field-value">${link}</div>
+        <div class="field-label">예상 질문</div>
+        <div class="field-value">${prep.예상질문.length ? prep.예상질문.map(esc).join('<br>') : '(미작성)'}</div>
+      </div>`;
+    }
+    html += '</div>';
+
+    // 청중보고서
+    html += `<div class="section"><h2>📋 내가 작성한 청중 보고서 (${submissions.length}건)</h2>`;
+    if (submissions.length === 0) {
+      html += '<div class="empty-state">제출한 청중 보고서가 없습니다.</div>';
+    } else {
+      submissions.forEach((sub, i) => {
+        html += `<div class="card">
+          <div class="meta">제출 ${i+1}번 · ${esc(sub.타임스탬프)}</div>
+          <div class="topic">📌 들은 발표 주제: ${esc(sub.주제)}</div>
+          <div class="field-label">발표 내용 메모</div>
+          <div class="field-value">${esc(sub.메모) || '(미작성)'}</div>
+          <div class="field-label">과학적 사고를 통해 비판적 질문하기</div>
+          <div class="field-value">${esc(sub.질문) || '(미작성)'}</div>
+        </div>`;
+      });
+    }
+    html += '</div>';
+
+    document.getElementById('resultContent').innerHTML = html;
+  }
+
+  // Enter 키로 로그인
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('loginSection').style.display !== 'none') {
+      login();
+    }
+  });
+</script>
+</body>
+</html>
